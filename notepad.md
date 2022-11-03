@@ -1,0 +1,3 @@
+## Questions
+- Time as categorical?
+- 
