@@ -77,9 +77,19 @@ for (sex in c("M", "F")){
 #  So we see that the times are somewhat normal distributed
 
 ### DESCRIPTIVE SUMMARY ###
-stats <- aggregate(time ~ stroke + dist + sex + course,
+means <- aggregate(time ~ stroke + dist + sex + course,
                    data = d,
                    FUN = mean)
+colnames(means)[colnames(means) == 'time'] <- 'time.mean'
+
+vars <- aggregate(time ~ stroke + dist + sex + course,
+                   data = d,
+                   FUN = var)
+
+colnames(vars)[colnames(vars) == 'time'] <- 'time.var'
+
+stats <- merge(means, vars, by=c("stroke", "dist", "sex", "course"))
+
 
 
 
