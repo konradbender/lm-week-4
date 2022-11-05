@@ -53,4 +53,4 @@ rsconnect/
 .idea
 .DS_Store
 data/
-
+plots/
