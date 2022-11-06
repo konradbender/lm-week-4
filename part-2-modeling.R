@@ -92,9 +92,97 @@ mod6.extra <- lm(time ~ (dist + stroke + sex + n.splits)^3
   - stroke:sex:n.splits + I(dist^2)*stroke, data = d)
 
 extractAIC(mod6.extra)
+
+# Taking logs of the distance makes the RSE WORSE!!
+
+# without the new term, we have AIC = 523, RSE = 1.746.
+
 # with the new term, we have RSE = 1.648 and AIC = 472
 # With dist^2 * stroke, we have RSE = 1.576 and AIC = 436
 # Taking exp instead of ^2 we have RSE = 1.621 and AIC = 460
-# without the new term, we have AIC = 523, RSE = 1.746.
+
 # Also, the p value of the x^2 term is very small, so it is relevant!
-# Taking logs of the distance makes the model WORSE
+
+par(mfcol = c(3, 2))
+plot(mod6.extra, which = 1:6, main = "Model 6 Extra")
+plot(chosen.model, which = 1:6, main = "Model 6")
+
+weighted_model <- lm(time ~ (dist + stroke + sex + n.splits)^3
+  - dist:stroke:n.splits
+  - dist:sex:n.splits
+  - stroke:sex:n.splits + I(dist^2)*stroke, data = d, weights = 1/d[, "time"])
+
+plot(weighted_model, main = "with weights", which = 1:6)
+
+weighted_model_sq <- lm(time ~ (dist + stroke + sex + n.splits)^3
+  - dist:stroke:n.splits
+  - dist:sex:n.splits
+  - stroke:sex:n.splits + I(dist^2)*stroke, data = d, weights = 1/(d$time*d$time))
+
+summary(weighted_model_sq)
+extractAIC(weighted_model_sq)
+
+par(mfcol = c(1,3))
+plot(mod6.extra, which = 3, main = "model 6")
+plot(weighted_model, which = 3, main = "model 6 with weigths")
+plot(weighted_model_sq, which = 3, main = "model 6 with squared weigths")
+
+
+par(mfcol = c(3,2))
+plot(weighted_model_sq, which = 1:6)
+
+
+par(mfcol = c(1,3))
+pdf("plots/q_plots_of_different_models.pdf")
+plot(mod6.extra, which = 2, main = "model 6")
+plot(weighted_model, which = 2, main = "model 6 with weigths")
+plot(weighted_model_sq, which = 2, main = "model 6 with squared weigths")
+dev.off()
+## OUTLIER ANALYSIS
+
+n <- dim(d)[1]
+p <- length(weighted_model_sq$coefficients)
+cook <- 8/(n-2*p)
+dev.off()
+dev.new()
+par(mfcol=c(1,1))
+pdf("plots/cooks_distance_for_all.pdf")
+plot(weighted_model_sq, which = 4, sub.caption = "")
+abline(h=cook, col="red")
+dev.off()
+# From the plot we see we need to remove observations 280, 376, 424.
+
+d.clean <- d[ -c(280, 376, 424), ]
+weighted_model_sq.clean <- lm(time ~ (dist + stroke + sex + n.splits)^3
+  - dist:stroke:n.splits
+  - dist:sex:n.splits
+  - stroke:sex:n.splits + I(dist^2)*stroke, data = d.clean, weights = 1/(d.clean$time*d.clean$time))
+
+## Predictions - keep in mind they are weighted.
+new.d <- data.frame(
+  name = c("RaceA", "RaceB", "RaceC", "RaceD"),
+  dist = c(400, 50, 400, 100),
+  stroke = c("Freestyle", "Backstroke", "Butterfly", "Medley"),
+  sex = c("F", "F", "F", "F"),
+  course = c("Long", "Long", "Long", "Long")
+)
+
+for (col in colnames(new.d)) {
+  if (col %in% c("time", "dist")) {
+    next
+  }
+  if (col == "stroke") {
+    new.d[, "stroke"] <- as.factor(new.d[, "stroke"])
+  }
+  new.d[, col] <- as.factor(new.d[, col])
+}
+
+# now let's think about anew.dnew.ding the term with the number of turns
+new.d[, "n.splits"] <- (new.d[, "dist"] / 25)
+new.d[new.d$course == "Long", "n.splits"] <- new.d[new.d$course == "Long", "n.splits"] / 2
+new.d[, "n.turns"] <- new.d[, "n.splits"] - 1
+
+preds <- predict(weighted_model_sq.clean, newdata = new.d, weights = 1/(new.d$time*new.d$time))
+preds.no.weights <- predict(weighted_model_sq.clean, newdata = new.d)
+
+write.csv(preds, "preds.csv")
