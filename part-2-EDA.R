@@ -6,6 +6,7 @@
 library(dplyr)
 library(ggplot2)
 library(reshape2)
+# library(moments)
 setwd("/Users/konrad/code/school/MT/practicals/lm-week-4")
 
 d <- read.csv("data/swim.csv", header = TRUE, sep = ",")
@@ -85,22 +86,22 @@ vars <- aggregate(time ~ stroke + dist + sex + course,
 
 colnames(vars)[colnames(vars) == 'time'] <- 'time.var'
 
-skews <- aggregate(time ~ stroke + dist + sex + course,
-                  data = d.male,
-                  FUN = skewness)
-
-colnames(skews)[colnames(vars) == 'time'] <- 'time.skew'
-
+# skews <- aggregate(time ~ stroke + dist + sex + course,
+#                   data = d.male,
+#                   FUN = skewness)
+#
+# colnames(skews)[colnames(vars) == 'time'] <- 'time.skew'
+#
 
 stats <- merge(means, vars, by = c("stroke", "dist", "sex", "course"))
-stats <- merge(stats, skews, by = c("stroke", "dist", "sex", "course"))
+# stats <- merge(stats, skews, by = c("stroke", "dist", "sex", "course"))
 
 write.csv(stats, "descriptive_stats.csv", row.names = FALSE)
 
 by_group <- d %>% group_by(stroke, sex)
 fun <- function(x) {
   x <- data.frame(x)
-  plot(x[, "dist"], x[, "time"], xlab = "Distance [m]", ylab = "Time [s]",
+  plot(x[, "dist"], x[, "time"], xlab = "Distance [m]", ylab = "Time [s/m]",
        main = paste("Scatterplot for",
                     x[1, "stroke"],
                     x[1, "sex"]))
@@ -110,17 +111,17 @@ fun <- function(x) {
 # by_group %>% do(fun(.))
 
 # First Plot: The effect of the gender on the times
-data <- d[d$dist == 200, ]
+data <- d[d$dist == 200 & d$course == "Long", ]
 data[, "stroke"] <- factor(data[, "stroke"], levels = c("Freestyle", "Butterfly",
                                                         "Backstroke", "Medley", "Breaststroke"))
 data[, "sex"] <- factor(data[, "sex"], levels=c("M", "F"))
-p <- ggplot(data, aes(sex, avg.time), ylab("Average time [s]")) +
+p <- ggplot(data, aes(sex, avg.time), ylab("Average time [s/m]")) +
   geom_boxplot() +
   facet_grid(~ stroke, scales = "free", space = "free") +
   theme(text = element_text(size=12), legend.position = "top", legend.title=element_blank())  +
-  labs(y = "Average time [s]", x="Gender of Athlete", title = "Average times for different genders and stroke (200 m only)")
+  labs(y = "Average time [s/m]", x="Gender of Athlete", title = "Average times for different genders and stroke (200 m Long only)")
 print(p)
-ggsave("plots/boxplot_gender_effect.pdf", device = "pdf")
+ggsave("plots/boxplot_gender_effect.png", device = "png", width = 10, height = 5, units = "in")
 # So, we see that men are in fact faster than women in all strokes.
 
 # Let's make one nice plot for each gender that summarizes all data
@@ -130,24 +131,26 @@ male[, "stroke"] <- factor(male[, "stroke"], levels = c("Freestyle", "Butterfly"
                                                            "Backstroke", "Medley", "Breaststroke"))
 
 male[, "dummy"] <- 1
-p <- ggplot(male, aes(stroke, avg.time), ylab("Average time [s]")) +
+p <- ggplot(male, aes(stroke, avg.time), ylab("Average time [s/m]")) +
    geom_boxplot(aes(fill=stroke)) +
-   facet_wrap(~ dist) +
+   facet_wrap(~ dist,) +
    theme(text = element_text(size=12), legend.position = "top", legend.title=element_blank())  +
-   labs(y = "Average time [s]", x="Stroke", title = "Average times for different distances and strokes (men only)")
+   labs(y = "Average time [s/m]", x="Stroke", title = "Average times for different distances and strokes (men only)")
 print(p)
-ggsave("plots/overall_boxplot_M.pdf", device = "pdf")
+ggsave("plots/overall_boxplot_M.png", device = "png", width = 10, height = 7, units = "in")
+
 
 # Next, let's see how the number of turns people are doing affects the pace
 # png(file = paste0("plots/n_of_turns_", sex, ".png"), width = 10, height = 7.5, units = "in", res = 300)
 data <- d[d$sex == "M" & d$stroke == "Freestyle", ]
 data[, "course"] <- factor(data$course, levels = c("Short", "Long"))
-p <- ggplot(data, aes(course, avg.time), ylab("Average time [s]")) +
+p <- ggplot(data, aes(course, avg.time), ylab("Average time [s/m]")) +
   geom_boxplot() +
   facet_grid(~ dist, scales = "free", space = "free") +
   theme(text = element_text(size=12), legend.position = "top", legend.title=element_blank())  +
-  labs(y = "Average time [s]", x="Course Type", title = "Average times for different course lengths and distances (men's Freestyle only)")
+  labs(y = "Average time [s/m]", x="Course Type", title = "Average times for different course lengths and distances (men's Freestyle only)")
 print(p)
-ggsave("plots/boxplot_freestyle_n_turns_men.pdf", device = "pdf")
+ggsave("plots/boxplot_freestyle_n_turns_men.png", device = "png", width = 10, height = 5, units = "in")
 # Nice, we also see that the number of turns they do has an effect on the time.
 # And the influence it has seems to depend on the distance as well!
+
